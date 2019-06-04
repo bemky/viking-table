@@ -1,0 +1,182 @@
+.viking-table{
+    .viking-table-table{
+        overflow:hidden;
+        overflow-x:auto;
+    }
+    .viking-table-container {
+        background: color('gray-lighter');
+        border: 1px solid color('gray');
+        border-radius: 0.25em;
+    }
+    &.-nest{
+        .viking-table-container {
+            border: none;
+            border-radius: 0;
+        }
+    }
+    .viking-table-actions{
+        padding: 0.25em;
+        text-align: right;
+        button {
+            padding: 0.15em 0.5em;
+            cursor: pointer;
+            font-size: 0.8em;
+            color: color('gray-dark');
+            &:hover{
+                background: rgba(color('blue-bright'), 0.25);
+                border-radius: 0.25em;
+                color: color('blue-dark');
+            }
+        }
+    }
+    table{
+        width: 100%;
+        background: white;
+    }
+    thead {
+        border-bottom: 1px solid color('gray-dark');
+        th {
+            position: sticky;
+            top: 0;
+            background: color('gray-lighter');
+            font-weight: normal;
+            color: color('gray-dark');
+            position: relative;
+            &:first-child{
+                border-top-left-radius: 0.25em;
+            }
+            &:last-child{
+                border-top-right-radius: 0.25em;
+            }
+        }
+    }
+    .viking-table-resize-handle{
+        position: absolute;
+        right: 0;
+        top: 0;
+        height: 100%;
+        padding-left: 10px;
+        cursor: col-resize;
+        opacity: 0;
+        &:after{
+            display: block;
+            content: '';
+            background: color('blue');
+            width: 3px;
+            height: 100%;
+        }
+        &.hover,
+        &:hover{
+            opacity: 1;
+        }
+    }
+
+    td,
+    th{
+        padding: 0.3em 1em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        &.pad-half,
+        &.pad-h-half{
+            padding-right: 0.5em;
+            padding-left: 0.5em;
+        }
+        &.pad-right-none{
+            padding-right: 0;
+        }
+    }
+    td{
+        vertical-align: middle;
+    }
+    tr,
+    .viking-table-row{
+        display: table-row;
+        text-decoration: none;
+        color: color('gray-dark');
+        &.active{
+            td {
+                background: color('green-lighter');
+            }
+        }
+        &:hover{
+            td {
+                background: lighten(color('blue-light'), 15);
+            }
+        }
+        & + tr,
+        & + .viking-table-row{
+            td {
+                border-top: 1px solid color('gray-light');
+            }
+        }
+    }
+    
+    .viking-table-sort{
+        display: inline-block;
+        padding: 0.15em 0.5em;
+        padding-right: 1.5em;
+        margin: -0.1    5em -0.5em;
+        margin-right: 0;
+        border-radius: 0.25em;
+        cursor: pointer;
+        position: relative;
+        &:after,
+        &:before{
+            position: absolute;
+            bottom: 50%;
+            right: 0;
+            content: $unicon-caret_up;
+            font-family: $unicons;
+            font-size: 1.2em;
+            line-height: 0.8;
+            color: rgba(black, 0.1);
+        }
+        &:after{
+            top: 50%;
+            bottom: auto;
+            content: $unicon-caret_down;
+        }
+        &.-active-asc{
+            &:before{
+                color: color('blue-dark');
+            }
+        }
+        &.-active-desc{
+            &:after{
+                color: color('blue-dark');
+            }
+        }
+        &.-active{
+            background: color('gray-light');
+            color: color('blue-dark');
+        }
+        &:hover{
+            background: rgba(color('blue-bright'), 0.25);
+            &:before{
+                color: color('blue');
+            }
+            &:after{
+                color: rgba(black, 0.1);
+            }
+            &.-active-asc{
+                &:before{
+                    color: rgba(black, 0.1);
+                }
+                &:after{
+                    color: color('blue');
+                }
+            }
+        }
+    }
+    &.striped{
+        tr,
+        .viking-table-row{
+            &:nth-child(even){
+                td {
+                    background: color('gray-lightest');
+                }
+            }
+        }
+    }
+}

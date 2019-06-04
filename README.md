@@ -1,2 +1,4 @@
-# viking-table_view
-A Table UI for Viking.js Models
+# Viking/TableView
+A Table UI for [Viking.js](https://github.com/malomalo/viking) Models
+
+
