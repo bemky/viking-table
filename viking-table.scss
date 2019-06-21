@@ -32,9 +32,10 @@
     table{
         width: 100%;
         background: white;
+        border-spacing: 0;
+        border-collapse: inherit;
     }
     thead {
-        border-bottom: 1px solid color('gray-dark');
         th {
             position: sticky;
             top: 0;
@@ -47,6 +48,11 @@
             }
             &:last-child{
                 border-top-right-radius: 0.25em;
+            }
+        }
+        tr:last-child{
+            th{
+                border-bottom: 1px solid color('gray-dark');
             }
         }
     }
@@ -176,6 +182,18 @@
                 td {
                     background: color('gray-lightest');
                 }
+            }
+        }
+    }
+}
+.viking-table-customize-modal{
+    .js-item{
+        .js-move{
+            opacity: 0;
+        }
+        &:hover{
+            .js-move{
+                opacity: 1;
             }
         }
     }

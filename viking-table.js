@@ -10,7 +10,7 @@
     pagination: boolean                        // optional show pagination
     secondarySort: hash                        // optional defaults to updated_at
     columns: hash of columns, keys are column ids
-        render: function(record)
+        render: function(record) return string|node
         header: string
         sort: string                            // optional attribute to sort by
         class: string                           // optional
@@ -34,7 +34,7 @@ export default Viking.View.extend({
         'columns',
         'defaultColumns',
         'link',
-        'id'
+        'store_key'
     ],
     
     events: {
@@ -81,6 +81,15 @@ export default Viking.View.extend({
             }, this))
         });
         
+        _.difference(_.keys(this.columns), _.map(this.settings.columns, m => m.id)).forEach(function(key){
+            this.settings.columns.push({
+                id: key,
+                options: {
+                    visible: false
+                }
+            })
+        }, this);
+        
         this.collection.cursor.set('per_page', this.settings.per_page, {silent: true});
         this.collection.order(this.settings.order, {silent: true});
         
@@ -88,8 +97,7 @@ export default Viking.View.extend({
             this.collection.include(this.include, {silent: true});
         }
         
-        if(!this.id) throw 'id needs to be set on VikingList';
-        this.collection.fetch();
+        if(!this.store_key) throw 'store_key needs to be set on VikingTable';
     },
     
     render () {
@@ -137,6 +145,7 @@ export default Viking.View.extend({
         
         this.updateActiveOrder();
         this.renderPagination();
+        this.collection.fetch();
         return this;
     },
     
@@ -146,9 +155,11 @@ export default Viking.View.extend({
         this.settings.columns.forEach(column => {
             if(column.options.visible == false) return;
             var columnOptions = this.columns[column.id];
-            var value = columnOptions.render ? columnOptions.render(record) : record.get(column.id);
-            if(value == null) value = "";
-            row.append(`<td class="${columnOptions.class || ""}">${value}</td>`);
+            var content = columnOptions.render ? columnOptions.render(record) : record.get(column.id);
+            if(content == null) content = "";
+            var cell = $(`<td class="${columnOptions.class || ""}"></td>`);
+            cell.append(content);
+            row.append(cell);
         }, this)
         
         this.$('tbody').append(row);
@@ -171,7 +182,7 @@ export default Viking.View.extend({
                         cell.append(`<div class="text-small"><span class="loader-bar inline-block rounded" style="line-height: 0.9; width: ${_.sample([100, 75, 50])}%">&nbsp;</span></div>`);
                     })
                 }
-                row.append(cell)
+                row.append(cell);
             }, this);
             this.$('tbody').append(row);
         }, this);
@@ -312,7 +323,7 @@ export default Viking.View.extend({
     
     openCustomizeModal () {
         var form = $(`
-            <div class="pad-v bg-background rounded min-width-300-px">
+            <div class="viking-table-customize-modal pad-v bg-background rounded min-width-300-px">
                 <h2 class="text-center margin-bottom">Customize Columns</h2>
                 <div class="grid grid-gutter-half grid-nowrap">
                     <div class="width-50-p">
@@ -332,10 +343,10 @@ export default Viking.View.extend({
             var column = _.findWhere(this.settings.columns, {id: e.currentTarget.value});
             if(e.currentTarget.checked){
                 column.options.visible = true;
-                $(e.currentTarget).parents('label').appendTo(includedGroup);
+                $(e.currentTarget).parents('.js-item').appendTo(includedGroup);
             } else {
                 column.options.visible = false;
-                $(e.currentTarget).parents('label').appendTo(excludedGroup);
+                $(e.currentTarget).parents('.js-item').appendTo(excludedGroup);
             }
         }.bind(this));
         
@@ -347,22 +358,22 @@ export default Viking.View.extend({
             var columnOptions = this.columns[column.id];
             var target = column.options.visible ? includedGroup : excludedGroup;
             target.append(`
-                <label class="text-nowrap pad-v-quarter grid grid-gutter-half grid-center grid-nowrap hover-target">
-                    <span class="col-fill">
+                <div class="js-item text-nowrap pad-v-quarter grid grid-gutter-half grid-center grid-nowrap">
+                    <label class="col-fill">
                         <input type="checkbox" value="${column.id}" ${column.options.visible ? 'checked' : ''}>
                         ${columnOptions.header || column.id.titleize()}
-                    </span>
-                    <span class="col js-move cursor-handle target">
+                    </label>
+                    <span class="col js-move cursor-handle">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 13.28 20" style="width:9px"><path d="M4.27,13.05a.54.54,0,0,0-.75,0,.53.53,0,0,0,0,.75l6.1,6a.54.54,0,0,0,.76,0l6.1-6a.53.53,0,0,0,0-.75.54.54,0,0,0-.75,0L10,18.56Z" transform="translate(-3.36 0)"/><path d="M15.73,6.94a.53.53,0,0,0,.75-.75l-6.1-6a.54.54,0,0,0-.76,0l-6.1,6a.53.53,0,1,0,.75.75L10,1.43Z" transform="translate(-3.36 0)"/></svg>
                     </span>
-                </label>
+                </div>
             `)
         }, this);
         
         includedGroup.dragsort({
             dragSelector: '.js-move',
-            itemSelector: 'label',
-            placeHolderTemplate: `<label class="block pad-v-quarter border-dashed">&nbsp;</label>`,
+            itemSelector: 'div',
+            placeHolderTemplate: `<div class="block pad-v-quarter border-dashed">&nbsp;</div>`,
             dragEnd: _.bind(function () {
                 var keys = _.map(includedGroup.find('input'), el => el.value);
                 this.settings.columns.sort((a, b) => keys.indexOf(a.id) - keys.indexOf(b.id));
@@ -386,10 +397,11 @@ export default Viking.View.extend({
         View Settings
     */
     saveSettings () {
-        Cookies.set('listViewSettings/'+this.id, this.settings);
+        localStorage.setItem('table_settings/'+this.store_key, JSON.stringify(this.settings));
     },
     
     getSettings () {
-        return Cookies.getJSON('listViewSettings/'+this.id) || {};
+        var stored = localStorage.getItem('table_settings/'+this.store_key);
+        return stored ? JSON.parse(stored) : {};
     }
 })
