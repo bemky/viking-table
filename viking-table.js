@@ -25,18 +25,18 @@
     defaultColumns: array of column ids
         
 */
-import {icon_tag} from 'helpers';
+import { icon_tag } from 'helpers';
 
 export default Viking.View.extend({
     className: "viking-table",
-    
+
     permit: [
         'columns',
         'defaultColumns',
         'link',
         'store_key'
     ],
-    
+
     events: {
         'click .js-more': 'incrementPage',
         'change .js-per-page': 'updatePerPage',
@@ -45,17 +45,18 @@ export default Viking.View.extend({
         'click .js-reset': 'resetColumns',
         'mousedown .viking-table-resize-handle': 'initiateColumnResize'
     },
-    
+
     options: {
         loader_count: false,
         pagination: true,
         class: '',
         secondarySort: {
             updated_at: 'desc'
-        }
+        },
+        manageCollection: true
     },
-    
-    initialize () {
+
+    initialize(options) {
         this.listenTo(this.collection, 'add', this.addRecord);
         this.listenTo(this.collection, 'remove', this.removeRecord);
         this.listenTo(this.collection, 'sync', this.renderPagination);
@@ -63,15 +64,16 @@ export default Viking.View.extend({
         this.listenTo(this.collection, 'sync', this.renderEmptyNotice);
         this.listenTo(this.collection, 'request', this.renderLoaders);
         this.listenTo(this.collection.cursor, 'change:per_page', this.saveSettings);
-        
+
         this.resizeColumn = this.resizeColumn.bind(this);
         this.endColumnResize = this.endColumnResize.bind(this);
-        
+
+        Object.assign(this.options, options);
         this.settings = _.defaults(this.getSettings(), {
             per_page: this.collection.cursor.get('per_page'),
             order: [this.options.secondarySort],
-            columns: _.compact(_.map(_.uniq(this.defaultColumns.concat(_.keys(this.columns))), function(id){
-                if(!_.keys(this.columns).includes(id)) return null;
+            columns: _.compact(_.map(_.uniq(this.defaultColumns.concat(_.keys(this.columns))), function (id) {
+                if (!_.keys(this.columns).includes(id)) return null;
                 return {
                     id: id,
                     options: {
@@ -80,8 +82,8 @@ export default Viking.View.extend({
                 }
             }, this))
         });
-        
-        _.difference(_.keys(this.columns), _.map(this.settings.columns, m => m.id)).forEach(function(key){
+
+        _.difference(_.keys(this.columns), _.map(this.settings.columns, m => m.id)).forEach(function (key) {
             this.settings.columns.push({
                 id: key,
                 options: {
@@ -89,18 +91,18 @@ export default Viking.View.extend({
                 }
             })
         }, this);
-        
-        this.collection.cursor.set('per_page', this.settings.per_page, {silent: true});
-        this.collection.order(this.settings.order, {silent: true});
-        
-        if(this.include) {
-            this.collection.include(this.include, {silent: true});
+
+        this.collection.cursor.set('per_page', this.settings.per_page, { silent: true });
+        this.collection.order(this.settings.order, { silent: true });
+
+        if (this.include) {
+            this.collection.include(this.include, { silent: true });
         }
-        
-        if(!this.store_key) throw 'store_key needs to be set on VikingTable';
+
+        if (!this.store_key) throw 'store_key needs to be set on VikingTable';
     },
-    
-    render () {
+
+    render() {
         this.$el.addClass('viking-table');
         this.$el.addClass(this.options.class);
         this.$el.html(`
@@ -121,60 +123,62 @@ export default Viking.View.extend({
             </div>
             <div class="viking-table-pagination"></div>
         `);
-        
+
         this.settings.columns.forEach(column => {
-            if(column.options.visible == false) return;
+            if (column.options.visible == false) return;
             var columnOptions = this.columns[column.id];
             var cell = $(`
                 <th class="${columnOptions.class || ""}" id="${column.id}">
                     ${typeof columnOptions.header != 'undefined' ? columnOptions.header : column.id.titleize()}
                 </th>
             `);
-            if(columnOptions.sort) cell.wrapInner(`<a class="viking-table-sort" data-attribute="${columnOptions.sort}">`);
+            if (columnOptions.sort) cell.wrapInner(`<a class="viking-table-sort" data-attribute="${columnOptions.sort}">`);
             cell.append('<div class="viking-table-resize-handle">');
-            
+
             this.$('colgroup').append(`<col id="${column.id}" style="width:${column.options.width}px">`);
             this.$('thead tr').append(cell);
         })
-        
-        if(this.settings.columns[0].options.width){
+
+        if (this.settings.columns[0].options.width) {
             this.$('table').css('table-layout', 'fixed');
         }
-        
+
         this.collection.each(this.addRecord, this);
-        
+
         this.updateActiveOrder();
         this.renderPagination();
-        this.collection.fetch();
+        if (this.options.manageCollection) {
+            this.collection.fetch();
+        }
         return this;
     },
-    
-    addRecord (record) {
+
+    addRecord(record) {
         var row = $(this.link ? `<a href="${this.link(record)}" class="viking-table-row">` : `<tr>`);
         row.attr('id', record.id);
         this.settings.columns.forEach(column => {
-            if(column.options.visible == false) return;
+            if (column.options.visible == false) return;
             var columnOptions = this.columns[column.id];
             var content = columnOptions.render ? columnOptions.render(record) : record.get(column.id);
-            if(content == null) content = "";
+            if (content == null) content = "";
             var cell = $(`<td class="${columnOptions.class || ""}"></td>`);
             cell.append(content);
             row.append(cell);
         }, this)
-        
+
         this.$('tbody').append(row);
         this.$('.viking-table-loader').first().remove();
     },
-    
-    removeRecord (record) {
+
+    removeRecord(record) {
         this.$(`tr#${record.id}, .viking-table-row#${record.id}`).remove();
     },
-    
-    renderLoaders () {
-        _.times(this.options.loader_count || this.collection.length || this.collection.cursor.get('per_page'), function(){
+
+    renderLoaders() {
+        _.times(this.options.loader_count || this.collection.length || this.collection.cursor.get('per_page'), function () {
             var row = $('<tr class="viking-table-loader">')
-            this.settings.columns.forEach(function(column){
-                if(column.options.visible == false) return;
+            this.settings.columns.forEach(function (column) {
+                if (column.options.visible == false) return;
                 var columnOptions = this.columns[column.id];
                 var cell = $(`<td class="${columnOptions.class || ""}" style="width:${column.options.width}px"><span class="loader-bar inline-block rounded" style="line-height: 0.9; width: ${_.sample([100, 75, 50])}%">&nbsp;</span></td>`);
                 if (columnOptions.loader_rows) {
@@ -187,25 +191,24 @@ export default Viking.View.extend({
             this.$('tbody').append(row);
         }, this);
     },
-    
-    removeLoaders () {
+
+    removeLoaders() {
         this.$('.js-empty-notice').remove();
         this.$('.viking-table-loader').remove();
     },
-    
-    renderEmptyNotice () {
-        if(this.collection.length > 0) return;
+
+    renderEmptyNotice() {
+        if (this.collection.length > 0) return;
         this.$('tbody').append(`
             <tr><td class="js-empty-notice text-italic text-gray">None</td></tr>
         `);
     },
-    
 
     /*
         Pagination
     */
-    renderPagination (cursor, models) {
-        if(this.options.pagination == false) return;
+    renderPagination(cursor, models) {
+        if (this.options.pagination == false) return;
         this.$('.viking-table-pagination').html(`
             <div class="text-center pad-v ">
                 <div class="text-gray-dark margin-bottom-half">
@@ -225,75 +228,77 @@ export default Viking.View.extend({
             </div>
         `)
 
-        this.collection.count(function(total){
+        this.collection.count(function (total) {
             this.$('.viking-table-pagination .js-total').text(total);
-            if(total == this.collection.length){
+            if (total == this.collection.length) {
                 this.$('.viking-table-pagination .js-more-action').remove();
             }
         }.bind(this));
     },
-    
-    incrementPage (e) {
+
+    incrementPage(e) {
         this.collection.cursor.incrementPage({
             remove: false
         });
     },
-    
-    updatePerPage (e) {
+
+    updatePerPage(e) {
         this.settings.per_page = $(e.currentTarget).val();
         this.collection.cursor.set('per_page', $(e.currentTarget).val());
     },
-    
+
     /*
         Ordering
     */
     selectOrder(e) {
         var order_key = $(e.currentTarget).data('attribute');
         var direction = 'asc';
-        if(this.settings.order[0][order_key] && this.settings.order[0][order_key].asc) direction = 'desc';
-        
+        if (this.settings.order[0][order_key] && this.settings.order[0][order_key].asc) direction = 'desc';
+
         this.settings.order = [{
             [order_key]: {
                 [direction]: 'nulls_last'
             }
         }, this.options.secondarySort];
-        this.collection.order(this.settings.order, {silent: true});
-        
+        this.collection.order(this.settings.order, { silent: true });
+
         this.saveSettings();
-        this.collection.fetch();
+        if (this.options.manageCollection) {
+            this.collection.fetch();
+        }
         this.collection.remove(this.collection.models);
         this.updateActiveOrder();
     },
-    
-    updateActiveOrder(){
+
+    updateActiveOrder() {
         this.$('.viking-table-sort').removeClass('-active -active-asc -active-desc');
         var order_key = _.keys(this.settings.order[0])[0];
         var direction = this.settings.order[0][order_key].asc ? 'asc' : 'desc';
         this.$(`.viking-table-sort[data-attribute="${order_key}"]`).addClass('-active -active-' + direction);
     },
-    
+
     /*
         Custom Columns
     */
-    initiateColumnResize (e) {
+    initiateColumnResize(e) {
         $(e.currentTarget).addClass('hover');
         $(window).on('mousemove', this.resizeColumn);
         $(window).on('mouseup', this.endColumnResize);
-        
-        this.$('thead th').each(function(i, el){
+
+        this.$('thead th').each(function (i, el) {
             var id = $(el).attr('id')
             var col = this.$('colgroup col#' + id)
             $(col).css('width', $(el).outerWidth());
-            _.findWhere(this.settings.columns, {id: id}).options.width = $(el).outerWidth();
+            _.findWhere(this.settings.columns, { id: id }).options.width = $(el).outerWidth();
         }.bind(this));
-        
+
         this.$('table').css('table-layout', 'fixed');
-        
+
         this.resizingCell = $(e.currentTarget).parent();
-        var col = this.$('colgroup col#'+this.resizingCell.attr('id'));
+        var col = this.$('colgroup col#' + this.resizingCell.attr('id'));
         $(col).css('border-right', '1px dashed #3f91cd');
     },
-    
+
     endColumnResize(e) {
         $(window).off('mousemove', this.resizeColumn);
         $(window).off('mouseup', this.endColumnResize);
@@ -302,26 +307,26 @@ export default Viking.View.extend({
         this.saveSettings();
         delete this.resizingCell;
     },
-    
+
     resizeColumn(e) {
-        if(!this.resizingCell) return;
-        var col = this.$('colgroup col#'+this.resizingCell.attr('id'));
+        if (!this.resizingCell) return;
+        var col = this.$('colgroup col#' + this.resizingCell.attr('id'));
         var newWidth = e.pageX - this.resizingCell.offset().left;
-        if(newWidth < 50) newWidth = 50;
+        if (newWidth < 50) newWidth = 50;
         $(col).css('width', newWidth);
-        _.findWhere(this.settings.columns, {id: this.resizingCell.attr('id')}).options.width = newWidth;
+        _.findWhere(this.settings.columns, { id: this.resizingCell.attr('id') }).options.width = newWidth;
     },
-    
+
     resetColumns(e) {
-        this.settings.columns.forEach(function(column) {
+        this.settings.columns.forEach(function (column) {
             delete column.options.width;
             column.options.visible = this.defaultColumns.includes(column.id);
         }, this);
         this.render();
         this.saveSettings();
     },
-    
-    openCustomizeModal () {
+
+    openCustomizeModal() {
         var form = $(`
             <div class="viking-table-customize-modal pad-v bg-background rounded min-width-300-px">
                 <h2 class="text-center margin-bottom">Customize Columns</h2>
@@ -339,9 +344,9 @@ export default Viking.View.extend({
             </div>
         `);
 
-        form.on('change', 'input', function(e){
-            var column = _.findWhere(this.settings.columns, {id: e.currentTarget.value});
-            if(e.currentTarget.checked){
+        form.on('change', 'input', function (e) {
+            var column = _.findWhere(this.settings.columns, { id: e.currentTarget.value });
+            if (e.currentTarget.checked) {
                 column.options.visible = true;
                 $(e.currentTarget).parents('.js-item').appendTo(includedGroup);
             } else {
@@ -349,11 +354,11 @@ export default Viking.View.extend({
                 $(e.currentTarget).parents('.js-item').appendTo(excludedGroup);
             }
         }.bind(this));
-        
-        
+
+
         var includedGroup = form.find('.js-included');
         var excludedGroup = form.find('.js-excluded');
-        
+
         this.settings.columns.forEach(column => {
             var columnOptions = this.columns[column.id];
             var target = column.options.visible ? includedGroup : excludedGroup;
@@ -369,7 +374,7 @@ export default Viking.View.extend({
                 </div>
             `)
         }, this);
-        
+
         includedGroup.dragsort({
             dragSelector: '.js-move',
             itemSelector: 'div',
@@ -379,29 +384,29 @@ export default Viking.View.extend({
                 this.settings.columns.sort((a, b) => keys.indexOf(a.id) - keys.indexOf(b.id));
             }, this)
         })
-        
+
         var modal = this.subView(Uniform.Modal, {
             content: form[0]
         }).render();
-        modal.on('closed', function(){
+        modal.on('closed', function () {
             this.render();
             this.saveSettings();
         }.bind(this));
-        
+
         form.on('click', '.js-close', function (e) {
             modal.close();
         })
     },
-    
+
     /*
         View Settings
     */
-    saveSettings () {
-        localStorage.setItem('table_settings/'+this.store_key, JSON.stringify(this.settings));
+    saveSettings() {
+        localStorage.setItem('table_settings/' + this.store_key, JSON.stringify(this.settings));
     },
-    
-    getSettings () {
-        var stored = localStorage.getItem('table_settings/'+this.store_key);
+
+    getSettings() {
+        var stored = localStorage.getItem('table_settings/' + this.store_key);
         return stored ? JSON.parse(stored) : {};
     }
 })
